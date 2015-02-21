@@ -1,7 +1,7 @@
 angular.module("myapp",[])
 	.controller("MapController",["$scope","MapService",function ($scope,MapService) {
-	    var point = new google.maps.LatLng(35.658892, 139.755286);
-	    var zoom = 3;
+	    var point = new google.maps.LatLng(32.700542, 128.831537);
+	    var zoom = 15;
 
 	    MapService.initMap(point,zoom);
 
@@ -15,7 +15,7 @@ angular.module("myapp",[])
 	.factory("MapService", ["$http","$q", function ($http,$q) {
 		var map;
 		var nodes = [];
-		var ways = [];
+		var ways;
 		var lines = [];
 
 		function initMap(point,zoom) {
@@ -37,25 +37,33 @@ angular.module("myapp",[])
 		}
 
 		function getData(url,callback) {
-			// var nodes_promise = $http({
-			// 	method: 'GET',
-			// 	url: url.nodes,
-			// 	timeout: 100000
-			// })
+			var nodes_promise = $http({
+				method: 'GET',
+				url: url.nodes,
+				timeout: 100000
+			}).success(function (data) {
+				// ways.concat(data);
+				for (var i=0; i<data.length; i++) {
+					nodes[data[i].id] = {
+						lat: data[i].lat,
+						lon: data[i].lon
+					}
+				}
+			});
 
-			// var ways_promise = $http({
-			// 	method: 'GET',
-			// 	url: url.ways,
-			// 	timeout: 100000
-			// })
+			var ways_promise = $http({
+				method: 'GET',
+				url: url.ways,
+				timeout: 100000
+			}).success(function (data) {
+				// nodes.concat(data);
+				ways = data
+			});
 
-			var nodes_promise = $http.jsonp(url.nodes);
-			var ways_promise = $http.jsonp(url.ways);
+			// var nodes_promise = $http.jsonp(url.nodes);
+			// var ways_promise = $http.jsonp(url.ways);
 
-			$q.all([nodes_promise,ways_promise]).then(function (data) {
-				alert("callback called!")
-				nodes.push(data[0]);
-				ways.push(data[1]);
+			$q.all([nodes_promise,ways_promise]).then(function () {
 
 				// ways.push(
 				// 	{
@@ -85,16 +93,22 @@ angular.module("myapp",[])
 			});
 		}
 		function clearData() {
-			nodes = []
-			ways = []
+			nodes = null;
+			ways = null;
 		}
 
 		function drawLines() {
+			var cnt = 0
 			for (var i=0; i<ways.length; i++) {
 				line_coords = [];
-				for (var j=0; j<ways[i].nodes.length; j++) {
-					var k = ways[i].nodes[j];
-					line_coords.push(new google.maps.LatLng(nodes[k].lat, nodes[k].lon))
+				for (var j=0; j<ways[i]["nodes"].length; j++) {
+					var k = ways[i]["nodes"][j];
+					if (nodes[k]) {
+						line_coords.push(new google.maps.LatLng(nodes[k].lat, nodes[k].lon))
+					} else {
+						cnt++;
+					}
+
 
 					lines[i] = new google.maps.Polyline({
 						path: line_coords,
@@ -105,7 +119,7 @@ angular.module("myapp",[])
  	 				lines[i].setMap(map);
 				}
 			}
-			alert(map);
+			alert(cnt);
 		}
 
 		return {
