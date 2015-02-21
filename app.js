@@ -16,7 +16,6 @@ angular.module("myapp",[])
 	    MapService.initMap(point,zoom);
 	    MapService.showWayWidth($scope.carWidth);
 
-
 	    $scope.onSubmit = function () {
 	    	MapService.reviseWayWidth($scope.wayId,$scope.wayWidth,$scope.wayWidth);
 	    }
@@ -79,7 +78,6 @@ angular.module("myapp",[])
 				url: nodesUrl,
 				timeout: 100000
 			}).success(function (data) {
-				// ways.concat(data);
 				for (var i=0; i<data.length; i++) {
 					nodes[data[i].id] = {
 						lat: data[i].lat,
@@ -139,8 +137,9 @@ angular.module("myapp",[])
 
  	 				lines[i].setMap(map);
 
+ 	 				// wayId毎のクロージャーを作成し、それをgoogle mapのイベントリスナーに引き渡す
 					var _onClickFunc = (function (_wayId) {
-					var wayId = _wayId
+						var wayId = _wayId
 						return function () {
 							if (onClickFunc) {
 								onClickFunc(wayId);
@@ -168,6 +167,7 @@ angular.module("myapp",[])
 		function setOnClickFunc(_scope,_func) {
 			var func = _func;
 			var $scope = _scope;
+			// onClick時の関数のひな形(？)を定義(入力のコールバック関数→ビューの更新)
 			onClickFunc = function (wayId) {
 				func(wayId);
 				$scope.$apply();
