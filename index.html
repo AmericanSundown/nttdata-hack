@@ -1,12 +1,17 @@
-<html>
+<html ng-app="myapp">
 <head>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.13/angular.min.js"></script>
-<script>
+    <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?libraries=places&sensor=false&language=ja"></script>
+<script type="text/javascript" src="./modules/angular-google-maps.min.js"></script>
+<script src="./app.js"></script>
 
-</script>
 </head>
 <body>
-<div 
 
+  <div ng-controller="MapController">
+  	<!--{{test}}
+    <!--<google-map center="map.center" zoom="map.zoom"></google-map>-->
+    <div id="map" style="width: 500px; height: 500px;"></div>
+  </div>
 </body>
 </html>
