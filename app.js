@@ -6,8 +6,8 @@ angular.module("myapp",[])
 	    MapService.initMap(point,zoom);
 
 	    MapService.showWayWidth({
-	    	nodes: "data/metro_routeDict.json",
-	    	ways: "data/metro_stationDict.json"
+	    	nodes: "http://localinnovation.net/game_hackathon/getdata_nodes.php",
+	    	ways: "http://localinnovation.net/game_hackathon/getdata_ways.php"
 	    });
 
 	}])
@@ -81,6 +81,11 @@ angular.module("myapp",[])
 				callback();
 			});
 		}
+		function clearData() {
+			nodes = []
+			ways = []
+		}
+
 		function drawLines() {
 			for (var i=0; i<ways.length; i++) {
 				line_coords = [];
@@ -98,7 +103,6 @@ angular.module("myapp",[])
 				}
 			}
 			alert(map);
-
 		}
 
 		return {
