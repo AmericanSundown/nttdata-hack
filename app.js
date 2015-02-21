@@ -1,22 +1,48 @@
 angular.module("myapp",[])
-	.controller("MapController",["$scope","MapService",function ($scope,MapService) {
+	.controller("MapController",["$scope","MapService", function ($scope,MapService) {
 	    var point = new google.maps.LatLng(32.700542, 128.831537);
 	    var zoom = 15;
+	    var scope = $scope;
+
+	    $scope.wayId = "No way selected"
+	    $scope.wayWidth = 5
+	    $scope.carWidth = 1.7
+	    $scope.cars = [
+	    	{name: "TOYOTA COROLLA", width: 1.7},
+	    	{name: "SUZUKI WagonR", width: 1.48},
+	    	{name: "Lamborghini Aventador", width: 2.030}
+	    ];
 
 	    MapService.initMap(point,zoom);
+	    MapService.showWayWidth($scope.carWidth);
 
-	    MapService.showWayWidth({
-	    	nodes: "http://localinnovation.net/game_hackathon/getdata_nodes.php",
-	    	ways: "http://localinnovation.net/game_hackathon/getdata_ways.php"
-	    });
+
+	    $scope.onSubmit = function () {
+	    	MapService.reviseWayWidth($scope.wayId,$scope.wayWidth,$scope.wayWidth);
+	    }
+
+	    $scope.onChange = function () {
+	    	alert($scope.carWidth)
+	    	MapService.refleshWayWidth($scope.carWidth);
+	    }
+
+	    MapService.setOnClickFunc($scope,function (wayId) {
+	    	$scope.wayId = wayId
+	    })
 
 	}])
 
 	.factory("MapService", ["$http","$q", function ($http,$q) {
+
+	    var nodesUrl = "http://localinnovation.net/game_hackathon/getdata_nodes.php"
+	    var waysUrl = "http://localinnovation.net/game_hackathon/getdata_ways.php"
+
 		var map;
 		var nodes = [];
 		var ways;
 		var lines = [];
+		var carWidth;
+		var onClickFunc;
 
 		function initMap(point,zoom) {
 			map = new google.maps.Map(document.getElementById("map"), {
@@ -29,17 +55,28 @@ angular.module("myapp",[])
 			service = new google.maps.places.PlacesService(map);
 		}
 
-		function showWayWidth(url) {
-			getData(url, function () {
+		function showWayWidth(_carWidth) {
+			carWidth = _carWidth
+			getData(function () {
 				drawLines();
 			})
 
 		}
 
-		function getData(url,callback) {
+		function refleshWayWidth(_carWidth) {
+			clearLines();
+			clearData();
+
+			carWidth = _carWidth
+			getData(function () {
+				drawLines();
+			})
+		}
+
+		function getData(callback) {
 			var nodes_promise = $http({
 				method: 'GET',
-				url: url.nodes,
+				url: nodesUrl,
 				timeout: 100000
 			}).success(function (data) {
 				// ways.concat(data);
@@ -53,77 +90,112 @@ angular.module("myapp",[])
 
 			var ways_promise = $http({
 				method: 'GET',
-				url: url.ways,
+				url: waysUrl,
 				timeout: 100000
 			}).success(function (data) {
 				// nodes.concat(data);
 				ways = data
 			});
 
-			// var nodes_promise = $http.jsonp(url.nodes);
-			// var ways_promise = $http.jsonp(url.ways);
-
 			$q.all([nodes_promise,ways_promise]).then(function () {
-
-				// ways.push(
-				// 	{
-				// 		id: 1,
-				// 		nodes: [0,1,2,3],
-				// 		minW: 1.5,
-				// 		maxW: 3
-				// 	},
-				// 	{
-				// 		id: 1,
-				// 		nodes: [4,5,6,7],
-				// 		minW: 1.5,
-				// 		maxW: 3
-				// 	}
-				// );
-				// nodes = [
-				// 	{ id: 0, lat: 37.772323, lon: -122.214897},
-				// 	{ id: 1, lat: 21.291982, lon: -157.821856},
-				// 	{ id: 2, lat: -18.142599, lon: 178.431},
-				// 	{ id: 3, lat: -27.46758, lon: 153.027892},
-				// 	{ id: 4, lat: -37.772323, lon: -122.214897},
-				// 	{ id: 5, lat: -21.291982, lon: -157.821856},
-				// 	{ id: 6, lat: 18.142599, lon: 178.431},
-				// 	{ id: 7, lat: 27.46758, lon: 153.027892}
-				// ];
 				callback();
 			});
 		}
 		function clearData() {
-			nodes = null;
+			nodes = [];
 			ways = null;
 		}
 
 		function drawLines() {
 			var cnt = 0
+			var lineColor;
 			for (var i=0; i<ways.length; i++) {
 				line_coords = [];
-				for (var j=0; j<ways[i]["nodes"].length; j++) {
-					var k = ways[i]["nodes"][j];
-					if (nodes[k]) {
-						line_coords.push(new google.maps.LatLng(nodes[k].lat, nodes[k].lon))
+
+				if ((0<Number(ways[i]["maxW"])) && (Number(ways[i]["maxW"]) < carWidth*2)) {
+					if (Number(ways[i]["maxW"]) < carWidth) {
+						lineColor = "#ff0000"
 					} else {
-						cnt++;
+						lineColor = "#ffff00"
 					}
 
+					for (var j=0; j<ways[i]["nodes"].length; j++) {
+						var k = ways[i]["nodes"][j];
+
+						// nodes[k]が存在しない場合を除外
+						if (nodes[k]) {
+							line_coords.push(new google.maps.LatLng(nodes[k].lat, nodes[k].lon))
+						} else {
+							cnt++;
+						}
+					}
 
 					lines[i] = new google.maps.Polyline({
 						path: line_coords,
-						strokeColor: "#FF0000",
+						strokeColor: lineColor,
 						strokeOpacity: 1.0,
 						strokeWeight: 2
 					});
+
  	 				lines[i].setMap(map);
+
+					var _onClickFunc = (function (_wayId) {
+					var wayId = _wayId
+						return function () {
+							if (onClickFunc) {
+								onClickFunc(wayId);
+							}
+						}
+					})(ways[i].id);
+
+					google.maps.event.addListener(lines[i], 'click', _onClickFunc);
+
 				}
 			}
-			alert(cnt);
+		}
+
+		function clearLines() {
+			var cnt = 0
+			for (var i=0; i<ways.length; i++) {
+				if (lines[i]) {
+					cnt++;
+					lines[i].setMap(null)
+				}
+			}
+			alert(cnt + " lines were deleted")
+		}
+
+		function setOnClickFunc(_scope,_func) {
+			var func = _func;
+			var $scope = _scope;
+			onClickFunc = function (wayId) {
+				func(wayId);
+				$scope.$apply();
+			}
+		}
+
+		function reviseWayWidth(wayId,minW,maxW) {
+			if (isFinite(minW)){
+				alert(wayId +","+ minW + "," + maxW)
+			} else {
+				alert("入力が不適切です");
+			}
 		}
 
 		return {
 			initMap: initMap,
-			showWayWidth: showWayWidth
+			showWayWidth: showWayWidth,
+			refleshWayWidth: refleshWayWidth,
+			setOnClickFunc: setOnClickFunc,
+			reviseWayWidth: reviseWayWidth
+		}
+	}])
+
+	.factory("CarService", ["$http", function ($http) {
+		function getCars() {
+		}
+		return {
+			getCars: getCars
 		}
 	}]);
+	
