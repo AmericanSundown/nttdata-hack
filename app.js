@@ -26,16 +26,21 @@ angular.module("myapp",[])
     	MapService.refleshWayWidth($scope.carWidth);
     }
 
-    MapService.setLineClicked($scope,function (wayId) {
+    $scope.searchRoute = function () {
+    	MapService.searchRoute();
+    }
+
+    MapService.setLineOnClick($scope,function (wayId) {
     	$scope.wayId = wayId
     })
 
 }])
 
-.factory("MapService", ["$http","$q", function ($http,$q) {
+.factory("MapService", ["$http","$q","RouteSearch", function ($http,$q,RouteSearch) {
 
     var nodesUrl = "http://localinnovation.net/game_hackathon/getdata_nodes.php"
     var waysUrl = "http://localinnovation.net/game_hackathon/getdata_ways.php"
+    var writeUrl = "http://localinnovation.net/game_hackathon/getdata_ways.php"
 
 	var map;
 	var nodes;
@@ -45,7 +50,7 @@ angular.module("myapp",[])
 
 	var lines = [];
 	var carWidth;
-	var LineClicked;
+	var LineOnClick;
 
 	function initMap(point,zoom) {
 		map = new google.maps.Map(document.getElementById("map"), {
@@ -149,16 +154,16 @@ angular.module("myapp",[])
  				lines[i].setMap(map);
 
  				// wayId毎のクロージャーを作成し、それをgoogle mapのイベントリスナーに引き渡す
-				var _LineClicked = (function (_wayId) {
+				var _LineOnClick = (function (_wayId) {
 					var wayId = _wayId
 					return function () {
-						if (LineClicked) {
-							LineClicked(wayId);
+						if (LineOnClick) {
+							LineOnClick(wayId);
 						}
 					}
 				})(ways[i].id);
 
-				google.maps.event.addListener(lines[i], 'click', _LineClicked);
+				google.maps.event.addListener(lines[i], 'click', _LineOnClick);
 
 			}
 		}
@@ -174,30 +179,51 @@ angular.module("myapp",[])
 		}
 	}
 
-	function setLineClicked(_scope,_func) {
+	function setLineOnClick(_scope,_func) {
 		var func = _func;
 		var $scope = _scope;
 		// onClick時の関数のひな形(？)を定義(入力のコールバック関数→ビューの更新)
-		LineClicked = function (wayId) {
+		LineOnClick = function (wayId) {
 			func(wayId);
 			$scope.$apply();
 		}
 	}
 
 	function reviseWayWidth(wayId,minW,maxW) {
+		// alert("本当に変更しますか?\n\nwayid: " + wayId +"\nminWidth: "+ minW + "\nmaxWidth: " + maxW)
 		if (isFinite(minW)){
-			alert(wayId +","+ minW + "," + maxW)
+			$http({
+				method: 'GET',
+				url: writeUrl + "?id=" + wayId + "&min=" + minW + "&max=" + maxW,
+			}).success(function (data) {
+				if (data) {
+					clearData();
+					getData(function (){
+						clearLines();
+						drawLines();
+					})
+					alert("変更されました")
+				} else {
+					alert("変更に失敗しました")
+				}
+			});
+
 		} else {
 			alert("入力が不適切です");
 		}
+	}
+
+	function searchRoute() {
+		RouteSearch.dykstra(nodes,ways,1288730925,1288694288);
 	}
 
 	return {
 		initMap: initMap,
 		showWayWidth: showWayWidth,
 		refleshWayWidth: refleshWayWidth,
-		setLineClicked: setLineClicked,
-		reviseWayWidth: reviseWayWidth
+		setLineOnClick: setLineOnClick,
+		reviseWayWidth: reviseWayWidth,
+		searchRoute: searchRoute
 	}
 }])
 
@@ -211,28 +237,76 @@ angular.module("myapp",[])
 
 .factory("RouteSearch", function () {
 	var cars = [];
-	var connectedNodes;
-	var nodes
-	var ways
-	var nodesIdToIndex;
-	var waysIdToIndex;
-	var fromCoord;
-	var toCoord;
+	var connectedNodes = [];
+	var nodes;
+	var ways;
+	var nodesIdToIndex = [];
+	var waysIdToIndex = [];
+	var fromId;
+	var toId;
 
-	function dykstra(_nodes,_ways,_fromCoord,_ToCoord) {
+	function dykstra(_nodes,_ways,_fromId,_ToId) {
+		nodes = _nodes;
+		ways = _ways;
+		fromId = _fromId;
+		toId = _toId;
 
-
-		nodes.forEach(function (obj,i,arr) {
-			nodesIdToIndex[obj.id] = i;
+		nodes.forEach(function (node,i,arr) {
+			nodesIdToIndex[node.id] = i;
 		});
-		ways.forEach(function (obj,i,arr) {
-			waysIdToIndex[obj.id] = i;
+		ways.forEach(function (way,i,arr) {
+			waysIdToIndex[way.id] = i;
 		});
 
-		// Create connectedNodes
-		ways.forEach(function (obj,i,arr) {
+		// Init connectedNodes[]
+		nodes.forEach(function (node,i,arr) {
+			connectedNodes[node.id] = {
+				neighbors: [],
+				alive: true
+			}
+		});
+
+		// Add data to connectedNodes[]
+		ways.forEach(function (_way,i,arr) {
+			var way = _way
+
+			way.nodes.forEach(function (nodeId,i,wayNodeIds) {
+				if (nodesIdToIndex[nodeId]) {
+					if (i<0) {
+						connectedNodes[nodeId].neighbors.push({
+							id: wayNodeIds[i-1],
+							distance: calcDistance(nodeId,wayNodeIds[i-1])
+						})
+					}
+					if (i<wayNodeIds.length-1) {
+						connectedNodes[nodeId].neighbors.push({
+							id: wayNodeIds[i+1],
+							distance: calcDistance(nodeId,wayNodeIds[i+1])
+						})
+					}
+				}
+			});
 
 		});
+
+		cars.push(new car(fromId));
+
+
+		function car(id) {
+			now = id;
+			pre = null;
+		}
+
+		function calcDistance(fromId,toId) {
+			if (nodesIdToIndex[toId] && nodes[nodesIdToIndex[fromId]]) {
+				dx = nodes[nodesIdToIndex[toId]].lon - nodes[nodesIdToIndex[fromId]].lon
+				dy = nodes[nodesIdToIndex[toId]].lat - nodes[nodesIdToIndex[fromId]].lat
+				return Math.sqrt(Math.pow(dx,2)+Math.pow(dy,2))
+			} else {
+				return 0
+			}
+		}
+
 	}
 
 	return {
