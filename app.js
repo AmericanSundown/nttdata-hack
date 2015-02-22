@@ -1,6 +1,6 @@
 angular.module("myapp",[])
 
-.controller("MapController",["$scope","MapService", function ($scope,MapService) {
+.controller("MapController",["$scope","MapService","CarService", function ($scope,MapService,CarService) {
     var point = new google.maps.LatLng(32.700542, 128.831537);
     var zoom = 15;
     var scope = $scope;
@@ -22,7 +22,6 @@ angular.module("myapp",[])
     }
 
     $scope.onChange = function () {
-    	alert($scope.carWidth)
     	MapService.refleshWayWidth($scope.carWidth);
     }
 
@@ -31,6 +30,25 @@ angular.module("myapp",[])
     })
 
 }])
+// .directive("map", function (){
+// 	return {
+// 		restrict: 'A',
+// 		link: function (scope, elem, attrs) {
+// 			// var body = angular.element("body")
+// 			// if (body>)
+// 			alert(angular.element("body").width())
+// 			if (angular.element("body").width() >= 1200) {
+// 				elem.css("width",600)
+// 			} else if (angular.element("body").width() >= 992) {
+// 				elem.css("width",496)
+// 			} else if (angular.element("body").width() >= 768) {
+// 				elem.css("width",384)
+// 			} else {
+// 				elem.css("width",250)
+// 			}
+// 		}
+//  	}
+// })
 
 .factory("MapService", ["$http","$q", function ($http,$q) {
 
@@ -161,7 +179,6 @@ angular.module("myapp",[])
 				lines[i].setMap(null)
 			}
 		}
-		alert(cnt + " lines were deleted")
 	}
 
 	function setOnClickFunc(_scope,_func) {
