@@ -38,8 +38,11 @@ angular.module("myapp",[])
     var waysUrl = "http://localinnovation.net/game_hackathon/getdata_ways.php"
 
 	var map;
-	var nodes = [];
+	var nodes;
+	var nodesIdToIndex;
 	var ways;
+	var waysIdToIndex;
+
 	var lines = [];
 	var carWidth;
 	var LineClicked;
@@ -78,11 +81,16 @@ angular.module("myapp",[])
 			url: nodesUrl,
 			timeout: 100000
 		}).success(function (data) {
+			// for (var i=0; i<data.length; i++) {
+			// 	nodes[data[i].id] = {
+			// 		lat: data[i].lat,
+			// 		lon: data[i].lon
+			// 	}
+			// }
+			nodes = data
+			nodesIdToIndex = [];
 			for (var i=0; i<data.length; i++) {
-				nodes[data[i].id] = {
-					lat: data[i].lat,
-					lon: data[i].lon
-				}
+				nodesIdToIndex[data[i].id] = i;
 			}
 		});
 
@@ -91,8 +99,11 @@ angular.module("myapp",[])
 			url: waysUrl,
 			timeout: 100000
 		}).success(function (data) {
-				// nodes.concat(data);
 			ways = data
+			waysIdToIndex = [];
+			for (var i=0; i<data.length; i++) {
+				waysIdToIndex[data[i].id] = i;
+			}
 		});
 
 		$q.all([nodes_promise,ways_promise]).then(function () {
@@ -100,12 +111,13 @@ angular.module("myapp",[])
 		});
 	}
 	function clearData() {
-		nodes = [];
+		nodes = null;
 		ways = null;
+		nodesIdToIndex = null;
+		waysIdToIndex = null;
 	}
 
 	function drawLines() {
-		var cnt = 0
 		var lineColor;
 		for (var i=0; i<ways.length; i++) {
 			line_coords = [];
@@ -118,13 +130,12 @@ angular.module("myapp",[])
 				}
 
 				for (var j=0; j<ways[i]["nodes"].length; j++) {
-					var k = ways[i]["nodes"][j];
 
-					// nodes[k]が存在しない場合を除外
-					if (nodes[k]) {
+					var k = nodesIdToIndex[ways[i]["nodes"][j]];
+
+					// 存在しない場合を除外
+					if (k) {
 						line_coords.push(new google.maps.LatLng(nodes[k].lat, nodes[k].lon))
-					} else {
-						cnt++;
 					}
 				}
 
@@ -196,5 +207,35 @@ angular.module("myapp",[])
 	return {
 		getCars: getCars
 	}
-}]);
-	
+}])
+
+.factory("RouteSearch", function () {
+	var cars = [];
+	var connectedNodes;
+	var nodes
+	var ways
+	var nodesIdToIndex;
+	var waysIdToIndex;
+	var fromCoord;
+	var toCoord;
+
+	function dykstra(_nodes,_ways,_fromCoord,_ToCoord) {
+
+
+		nodes.forEach(function (obj,i,arr) {
+			nodesIdToIndex[obj.id] = i;
+		});
+		ways.forEach(function (obj,i,arr) {
+			waysIdToIndex[obj.id] = i;
+		});
+
+		// Create connectedNodes
+		ways.forEach(function (obj,i,arr) {
+
+		});
+	}
+
+	return {
+		dykstra: dykstra
+	}
+});
