@@ -5,13 +5,14 @@ angular.module("myapp",[])
     var zoom = 15;
     var scope = $scope;
 
-    $scope.wayId = "No way selected"
+    $scope.wayId = "Not selected"
     $scope.wayWidth = 5
     $scope.carWidth = 1.7
     $scope.cars = [
     	{name: "TOYOTA COROLLA", width: 1.7},
     	{name: "SUZUKI WagonR", width: 1.48},
-    	{name: "Lamborghini Aventador", width: 2.030}
+    	{name: "Lamborghini Aventador", width: 2.030},
+    	{name: "Trailer", width: 3.2}
     ];
 
     MapService.initMap(point,zoom);
@@ -25,30 +26,11 @@ angular.module("myapp",[])
     	MapService.refleshWayWidth($scope.carWidth);
     }
 
-    MapService.setOnClickFunc($scope,function (wayId) {
+    MapService.setLineClicked($scope,function (wayId) {
     	$scope.wayId = wayId
     })
 
 }])
-// .directive("map", function (){
-// 	return {
-// 		restrict: 'A',
-// 		link: function (scope, elem, attrs) {
-// 			// var body = angular.element("body")
-// 			// if (body>)
-// 			alert(angular.element("body").width())
-// 			if (angular.element("body").width() >= 1200) {
-// 				elem.css("width",600)
-// 			} else if (angular.element("body").width() >= 992) {
-// 				elem.css("width",496)
-// 			} else if (angular.element("body").width() >= 768) {
-// 				elem.css("width",384)
-// 			} else {
-// 				elem.css("width",250)
-// 			}
-// 		}
-//  	}
-// })
 
 .factory("MapService", ["$http","$q", function ($http,$q) {
 
@@ -60,7 +42,7 @@ angular.module("myapp",[])
 	var ways;
 	var lines = [];
 	var carWidth;
-	var onClickFunc;
+	var LineClicked;
 
 	function initMap(point,zoom) {
 		map = new google.maps.Map(document.getElementById("map"), {
@@ -81,11 +63,11 @@ angular.module("myapp",[])
 	}
 
 	function refleshWayWidth(_carWidth) {
-		clearLines();
 		clearData();
 
 		carWidth = _carWidth
 		getData(function () {
+			clearLines();
 			drawLines();
 		})
 	}
@@ -156,16 +138,16 @@ angular.module("myapp",[])
  				lines[i].setMap(map);
 
  				// wayId毎のクロージャーを作成し、それをgoogle mapのイベントリスナーに引き渡す
-				var _onClickFunc = (function (_wayId) {
+				var _LineClicked = (function (_wayId) {
 					var wayId = _wayId
 					return function () {
-						if (onClickFunc) {
-							onClickFunc(wayId);
+						if (LineClicked) {
+							LineClicked(wayId);
 						}
 					}
 				})(ways[i].id);
 
-				google.maps.event.addListener(lines[i], 'click', _onClickFunc);
+				google.maps.event.addListener(lines[i], 'click', _LineClicked);
 
 			}
 		}
@@ -181,11 +163,11 @@ angular.module("myapp",[])
 		}
 	}
 
-	function setOnClickFunc(_scope,_func) {
+	function setLineClicked(_scope,_func) {
 		var func = _func;
 		var $scope = _scope;
 		// onClick時の関数のひな形(？)を定義(入力のコールバック関数→ビューの更新)
-		onClickFunc = function (wayId) {
+		LineClicked = function (wayId) {
 			func(wayId);
 			$scope.$apply();
 		}
@@ -203,7 +185,7 @@ angular.module("myapp",[])
 		initMap: initMap,
 		showWayWidth: showWayWidth,
 		refleshWayWidth: refleshWayWidth,
-		setOnClickFunc: setOnClickFunc,
+		setLineClicked: setLineClicked,
 		reviseWayWidth: reviseWayWidth
 	}
 }])
