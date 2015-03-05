@@ -14,16 +14,22 @@ angular.module("myapp",[])
     	{name: "Lamborghini Aventador", width: 2.030},
     	{name: "Trailer", width: 3.2}
     ];
+    $scope.levels = [
+    	{level: 1, label: "初級"},
+    	{level: 2, label: "中級"},
+    	{level: 3, label: "上級"}
+    ];
+    $scope.userLevel = 1;
 
     MapService.initMap(point,zoom);
-    MapService.showWayWidth($scope.carWidth);
+    MapService.showWayWidth($scope.carWidth,$scope.userLevel);
 
     $scope.onSubmit = function () {
     	MapService.reviseWayWidth($scope.wayId,$scope.wayWidth,$scope.wayWidth);
     }
 
     $scope.onChange = function () {
-    	MapService.refleshWayWidth($scope.carWidth);
+    	MapService.refleshWayWidth($scope.carWidth,$scope.userLevel);
     }
 
     $scope.searchRoute = function () {
@@ -50,6 +56,7 @@ angular.module("myapp",[])
 
 	var lines = [];
 	var carWidth;
+	var userLevel;
 	var LineOnClick;
 
 	function initMap(point,zoom) {
@@ -63,17 +70,19 @@ angular.module("myapp",[])
 		service = new google.maps.places.PlacesService(map);
 	}
 
-	function showWayWidth(_carWidth) {
+	function showWayWidth(_carWidth,_userLevel) {
 		carWidth = _carWidth
+		userLevel = _userLevel
 		getData(function () {
 			drawLines();
 		})
 	}
 
-	function refleshWayWidth(_carWidth) {
+	function refleshWayWidth(_carWidth,_userLevel) {
 		clearData();
 
 		carWidth = _carWidth
+		userLevel = _userLevel
 		getData(function () {
 			clearLines();
 			drawLines();
@@ -127,8 +136,8 @@ angular.module("myapp",[])
 		for (var i=0; i<ways.length; i++) {
 			line_coords = [];
 
-			if ((0<Number(ways[i]["maxW"])) && (Number(ways[i]["maxW"]) < carWidth*2)) {
-				if (Number(ways[i]["maxW"]) < carWidth) {
+			if ((0<Number(ways[i]["maxW"])) && (Number(ways[i]["maxW"]) < carWidth*2*Math.pow(2,-userLevel+2)) ) {
+				if (Number(ways[i]["maxW"]) < carWidth*Math.pow(2,-userLevel+2)) {
 					lineColor = "#ff0000"
 				} else {
 					lineColor = "#ffff00"
@@ -236,7 +245,6 @@ angular.module("myapp",[])
 }])
 
 .factory("RouteSearch", function () {
-	var cars = [];
 	var connectedNodes = [];
 	var nodes;
 	var ways;
@@ -245,11 +253,14 @@ angular.module("myapp",[])
 	var fromId;
 	var toId;
 
-	function dykstra(_nodes,_ways,_fromId,_ToId) {
+	function dykstra(_nodes,_ways,_fromId,_toId) {
 		nodes = _nodes;
 		ways = _ways;
 		fromId = _fromId;
 		toId = _toId;
+
+		var cars = [];
+		var n_cars;
 
 		nodes.forEach(function (node,i,arr) {
 			nodesIdToIndex[node.id] = i;
@@ -289,12 +300,42 @@ angular.module("myapp",[])
 
 		});
 
-		cars.push(new car(fromId));
+		n_cars = 1;
+		cars.push(new car(fromId,null,0,[]));
+		minMileage = 10000;
+		minMileageId;
+
+		for (var step=0; step<1000000000; step++) {
+
+			cars.forEach(function (car,i,arr) {
+				if ((car.Mileage < minMileage) && car.alive) {
+					minMileage = car.Mileage;
+					minMileageId = i;
+					if (!connectedNodes[car.now].alive) {
+						car.alive = false
+					}
+				}
+			})
+
+			connectedNodes[cars[minMileageId].now].neighbors.forEach(function (neighborId,i,arr) {
+				if (i==0) {
+					cars[minMileageId].pre = cars[minMileageId].now;
+					cars[minMileageId].now = neighborId;
+				} else {
+					cars.push(new car(cars[minMileageId].now,neighborId,cars[minMileageId].mileage,cars[minMileageId].routeLog))
+				}
+			});
+		}
 
 
-		function car(id) {
-			now = id;
-			pre = null;
+		function car(pre,now,mileage,routeLog) {
+			this.now = pre;
+			this.pre = now;
+			this.mileage = mileage;
+
+			this.routeLog = [];
+			this.routeLog.concat(routeLog);
+			this.alive = true;
 		}
 
 		function calcDistance(fromId,toId) {

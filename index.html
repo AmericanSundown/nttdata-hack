@@ -16,11 +16,15 @@
 <body>
 
   <div ng-controller="MapController">
-  	<div style="padding: 1em;">
-	  	車種:<select ng-model="carWidth" ng-options="c.width as c.name for c in cars" ng-change="onChange()">
-  		<!-- 車種:<select ng-model="carWidth" ng-change="onChange()">
-  			<option ng-repeat="c in cars" ng-value="{{c.width}}">test</option> -->
-  		</select>　車幅:{{carWidth}} m
+	<div style="padding: 1em;">
+	  	車種:
+	  	<select ng-model="carWidth" ng-options="c.width as c.name for c in cars" ng-change="onChange()">
+  		</select>
+  		車幅:
+  		{{carWidth}} m　　
+	  	運転の習熟度:
+	  	<select ng-model="userLevel" ng-options="c.level as c.label for c in levels" ng-change="onChange()">
+  		</select>
   	</div>
   	<div class="row" style="background-color: #000000; color: #ffffff">
   		<div class="col-xs-10 col-sm-10 col-md-5 col-lg-7 col-xs-offset-1 col-sm-offset-1 col-md-offset-1 col-lg-offset-1">
